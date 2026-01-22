@@ -31,6 +31,10 @@ class Budget
     #[Assert\GreaterThanOrEqual(0)]
     private string $balance = '0.00';
 
+    #[ORM\Column(type: Types::INTEGER, nullable: false, options: ['default' => 12])]
+    #[Assert\GreaterThan(0)]
+    private int $vacationMonths = 12;
+
     #[ORM\OneToMany(targetEntity: Transaction::class, mappedBy: 'budget', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $transactions;
 
@@ -68,6 +72,18 @@ class Budget
     public function setBalance(string $balance): static
     {
         $this->balance = $balance;
+
+        return $this;
+    }
+
+    public function getVacationMonths(): int
+    {
+        return $this->vacationMonths;
+    }
+
+    public function setVacationMonths(int $vacationMonths): static
+    {
+        $this->vacationMonths = $vacationMonths;
 
         return $this;
     }

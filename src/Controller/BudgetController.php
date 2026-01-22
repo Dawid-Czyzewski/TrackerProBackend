@@ -7,6 +7,7 @@ use App\DTO\TransactionDTO;
 use App\Entity\Budget;
 use App\Entity\Goal;
 use App\Entity\Transaction;
+use App\Repository\GoalRepository;
 use App\Service\BudgetService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -22,7 +23,8 @@ class BudgetController extends AbstractController
 {
     public function __construct(
         private readonly BudgetService $budgetService,
-        private readonly ValidatorInterface $validator
+        private readonly ValidatorInterface $validator,
+        private readonly GoalRepository $goalRepository
     ) {
     }
 
@@ -100,6 +102,70 @@ class BudgetController extends AbstractController
         return $this->json($this->serializeGoal($goal), Response::HTTP_CREATED);
     }
 
+    #[Route('/goals/{id}', name: 'api_budget_goals_update', methods: ['PUT'])]
+    public function updateGoal(Request $request, int $id): JsonResponse
+    {
+        $user = $this->getUser();
+        $budget = $this->budgetService->getOrCreateBudget($user);
+        
+        $goal = $this->goalRepository->find($id);
+        
+        if (!$goal || $goal->getBudget() !== $budget) {
+            return $this->json(['error' => 'Goal not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $dto = new GoalDTO(
+            name: $data['name'] ?? null,
+            targetAmount: $data['targetAmount'] ?? null
+        );
+
+        $errors = $this->validator->validate($dto);
+        if (count($errors) > 0) {
+            return $this->json(['errors' => (string) $errors], Response::HTTP_BAD_REQUEST);
+        }
+
+        $updatedGoal = $this->budgetService->updateGoal($goal, $dto);
+
+        return $this->json($this->serializeGoal($updatedGoal), Response::HTTP_OK);
+    }
+
+    #[Route('/goals/{id}', name: 'api_budget_goals_delete', methods: ['DELETE'])]
+    public function deleteGoal(int $id): JsonResponse
+    {
+        $user = $this->getUser();
+        $budget = $this->budgetService->getOrCreateBudget($user);
+        
+        $goal = $this->goalRepository->find($id);
+        
+        if (!$goal || $goal->getBudget() !== $budget) {
+            return $this->json(['error' => 'Goal not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        $this->budgetService->deleteGoal($goal);
+
+        return $this->json(['message' => 'Goal deleted successfully'], Response::HTTP_OK);
+    }
+
+    #[Route('/vacation-months', name: 'api_budget_vacation_months', methods: ['PUT'])]
+    public function updateVacationMonths(Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+        $vacationMonths = $data['vacationMonths'] ?? null;
+
+        if ($vacationMonths === null || !is_numeric($vacationMonths) || $vacationMonths < 1) {
+            return $this->json(['error' => 'Invalid vacation months value'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $user = $this->getUser();
+        $budget = $this->budgetService->getOrCreateBudget($user);
+        $budget->setVacationMonths((int) $vacationMonths);
+        
+        $this->budgetService->saveBudget($budget);
+
+        return $this->json($this->serializeBudget($budget), Response::HTTP_OK);
+    }
+
     private function serializeBudget(Budget $budget): array
     {
         return [
@@ -108,6 +174,7 @@ class BudgetController extends AbstractController
             'totalDeposits' => $budget->calculateTotalDeposits(),
             'totalWithdrawals' => $budget->calculateTotalWithdrawals(),
             'goalsCount' => $budget->getGoals()->count(),
+            'vacationMonths' => $budget->getVacationMonths(),
         ];
     }
 

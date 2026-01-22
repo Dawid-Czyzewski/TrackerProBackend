@@ -8,6 +8,7 @@ use App\Entity\Budget;
 use App\Entity\Goal;
 use App\Entity\Transaction;
 use App\Entity\User;
+use App\Enum\TransactionType;
 use Doctrine\ORM\EntityManagerInterface;
 
 class BudgetService
@@ -30,10 +31,15 @@ class BudgetService
         return $budget;
     }
 
+    public function saveBudget(Budget $budget): void
+    {
+        $this->entityManager->flush();
+    }
+
     public function addTransaction(Budget $budget, TransactionDTO $dto): Transaction
     {
         $transaction = new Transaction();
-        $transactionType = \App\Enum\TransactionType::from($dto->type);
+        $transactionType = TransactionType::from($dto->type);
         $transaction->setType($transactionType);
         $transaction->setAmount($dto->amount);
         $transaction->setDescription($dto->description);
@@ -42,7 +48,7 @@ class BudgetService
         $currentBalance = (float) $budget->getBalance();
         $amount = (float) $dto->amount;
 
-        if ($transactionType === \App\Enum\TransactionType::DEPOSIT) {
+        if ($transactionType === TransactionType::DEPOSIT) {
             $newBalance = $currentBalance + $amount;
         } else {
             $newBalance = $currentBalance - $amount;
@@ -71,6 +77,24 @@ class BudgetService
         $this->checkGoalsCompletion($budget);
 
         return $goal;
+    }
+
+    public function updateGoal(Goal $goal, GoalDTO $dto): Goal
+    {
+        $goal->setName($dto->name);
+        $goal->setTargetAmount($dto->targetAmount);
+
+        $this->entityManager->flush();
+
+        $this->checkGoalsCompletion($goal->getBudget());
+
+        return $goal;
+    }
+
+    public function deleteGoal(Goal $goal): void
+    {
+        $this->entityManager->remove($goal);
+        $this->entityManager->flush();
     }
 
     private function checkGoalsCompletion(Budget $budget): void
