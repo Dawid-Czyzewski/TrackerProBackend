@@ -81,7 +81,7 @@ class BudgetServiceTest extends TestCase
             description: 'Test deposit'
         );
 
-        $budget->expects($this->once())
+        $budget->expects($this->exactly(2))
             ->method('getBalance')
             ->willReturn('50.00');
 
@@ -118,7 +118,7 @@ class BudgetServiceTest extends TestCase
             description: 'Test withdrawal'
         );
 
-        $budget->expects($this->once())
+        $budget->expects($this->exactly(2))
             ->method('getBalance')
             ->willReturn('100.00');
 

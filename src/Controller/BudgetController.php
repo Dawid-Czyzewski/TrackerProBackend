@@ -8,6 +8,7 @@ use App\Entity\Budget;
 use App\Entity\Goal;
 use App\Entity\Transaction;
 use App\Repository\GoalRepository;
+use App\Repository\TransactionRepository;
 use App\Service\BudgetService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -24,7 +25,8 @@ class BudgetController extends AbstractController
     public function __construct(
         private readonly BudgetService $budgetService,
         private readonly ValidatorInterface $validator,
-        private readonly GoalRepository $goalRepository
+        private readonly GoalRepository $goalRepository,
+        private readonly TransactionRepository $transactionRepository
     ) {
     }
 
@@ -71,12 +73,29 @@ class BudgetController extends AbstractController
         return $this->json($this->serializeTransaction($transaction), Response::HTTP_CREATED);
     }
 
+    #[Route('/transactions/{id}', name: 'api_budget_transactions_delete', methods: ['DELETE'])]
+    public function deleteTransaction(int $id): JsonResponse
+    {
+        $user = $this->getUser();
+        $budget = $this->budgetService->getOrCreateBudget($user);
+        $transaction = $this->transactionRepository->find($id);
+
+        if (!$transaction || $transaction->getBudget() !== $budget) {
+            return $this->json(['error' => 'Transaction not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        $this->budgetService->deleteTransaction($transaction);
+
+        return $this->json(['message' => 'Transaction deleted successfully'], Response::HTTP_OK);
+    }
+
     #[Route('/goals', name: 'api_budget_goals', methods: ['GET'])]
     public function goals(): JsonResponse
     {
         $user = $this->getUser();
         $budget = $this->budgetService->getOrCreateBudget($user);
         $goals = $budget->getGoals()->toArray();
+        usort($goals, fn($a, $b) => $a->getId() <=> $b->getId());
 
         return $this->json(array_map(fn($g) => $this->serializeGoal($g), $goals));
     }

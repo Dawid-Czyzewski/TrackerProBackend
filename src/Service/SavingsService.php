@@ -5,7 +5,6 @@ namespace App\Service;
 use App\Entity\Budget;
 use App\Entity\SavingsBudget;
 use App\Entity\SavingsTransaction;
-use App\Entity\Transaction;
 use App\Entity\User;
 use App\Enum\TransactionType;
 use App\Repository\SavingsBudgetRepository;
@@ -90,7 +89,7 @@ class SavingsService
         $newSavingsBalance = bcsub($savingsBudget->getBalance(), $amount, 2);
         $savingsBudget->setBalance($newSavingsBalance);
 
-        $deposit = new Transaction();
+        $deposit = new \App\Entity\Transaction();
         $deposit->setBudget($vacationBudget);
         $deposit->setType(TransactionType::DEPOSIT);
         $deposit->setAmount($amount);

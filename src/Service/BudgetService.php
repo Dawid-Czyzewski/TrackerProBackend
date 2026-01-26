@@ -97,11 +97,42 @@ class BudgetService
         $this->entityManager->flush();
     }
 
+    public function deleteTransaction(Transaction $transaction): void
+    {
+        $budget = $transaction->getBudget();
+        $amount = $transaction->getAmount();
+        $type = $transaction->getType();
+        $balance = $budget->getBalance();
+
+        if ($type === TransactionType::DEPOSIT) {
+            $newBalance = bcsub($balance, $amount, 2);
+        } else {
+            $newBalance = bcadd($balance, $amount, 2);
+        }
+        if (bccomp($newBalance, '0', 2) < 0) {
+            $newBalance = '0.00';
+        }
+        $budget->setBalance($newBalance);
+        $this->entityManager->remove($transaction);
+        $this->entityManager->flush();
+        $this->checkGoalsCompletion($budget);
+    }
+
     private function checkGoalsCompletion(Budget $budget): void
     {
-        $totalDeposits = $budget->calculateTotalDeposits();
-        foreach ($budget->getGoals() as $goal) {
-            $goal->checkCompletion($totalDeposits);
+        $balance = $budget->getBalance();
+        $goals = $budget->getGoals()->toArray();
+        usort($goals, fn($a, $b) => $a->getId() <=> $b->getId());
+
+        $remaining = $balance;
+        foreach ($goals as $goal) {
+            $target = $goal->getTargetAmount();
+            $allocated = bccomp($remaining, $target, 2) >= 0 ? $target : $remaining;
+            $goal->setIsCompleted(bccomp($allocated, $target, 2) >= 0);
+            $remaining = bcsub($remaining, $allocated, 2);
+            if (bccomp($remaining, '0', 2) < 0) {
+                $remaining = '0.00';
+            }
         }
         $this->entityManager->flush();
     }
