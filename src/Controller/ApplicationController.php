@@ -80,11 +80,25 @@ class ApplicationController extends AbstractController
     public function create(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
+        
+        $appliedAt = null;
+        if (isset($data['appliedAt']) && !empty($data['appliedAt'])) {
+            try {
+                $appliedAt = \DateTimeImmutable::createFromFormat('Y-m-d', $data['appliedAt']);
+                if ($appliedAt === false) {
+                    $appliedAt = new \DateTimeImmutable($data['appliedAt']);
+                }
+            } catch (\Exception $e) {
+                return $this->json(['error' => 'Invalid date format'], Response::HTTP_BAD_REQUEST);
+            }
+        }
+        
         $dto = new ApplicationDTO(
             companyName: $data['companyName'] ?? null,
             position: $data['position'] ?? null,
             platform: $data['platform'] ?? null,
-            status: $data['status'] ?? null
+            status: $data['status'] ?? null,
+            appliedAt: $appliedAt
         );
 
         $errors = $this->validator->validate($dto);
@@ -106,11 +120,28 @@ class ApplicationController extends AbstractController
         }
 
         $data = json_decode($request->getContent(), true);
+        
+        $appliedAt = null;
+        if (isset($data['appliedAt']) && !empty($data['appliedAt'])) {
+            try {
+                // Try to parse date - supports both YYYY-MM-DD and full datetime formats
+                $appliedAt = \DateTimeImmutable::createFromFormat('Y-m-d', $data['appliedAt']);
+                if ($appliedAt === false) {
+                    $appliedAt = new \DateTimeImmutable($data['appliedAt']);
+                }
+            } catch (\Exception $e) {
+                return $this->json(['error' => 'Invalid date format'], Response::HTTP_BAD_REQUEST);
+            }
+        } else {
+            $appliedAt = $application->getAppliedAt();
+        }
+        
         $dto = new ApplicationDTO(
             companyName: $data['companyName'] ?? $application->getCompanyName(),
             position: $data['position'] ?? $application->getPosition(),
             platform: $data['platform'] ?? $application->getPlatform(),
-            status: $data['status'] ?? $application->getStatus()->value
+            status: $data['status'] ?? $application->getStatus()->value,
+            appliedAt: $appliedAt
         );
 
         $errors = $this->validator->validate($dto);

@@ -55,6 +55,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToOne(targetEntity: Budget::class, mappedBy: 'user', cascade: ['persist', 'remove'])]
     private ?Budget $budget = null;
 
+    #[ORM\OneToOne(targetEntity: SavingsBudget::class, mappedBy: 'user', cascade: ['persist', 'remove'])]
+    private ?SavingsBudget $savingsBudget = null;
+
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $isVerified = false;
 
@@ -250,6 +253,22 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setVerificationToken(?string $verificationToken): static
     {
         $this->verificationToken = $verificationToken;
+
+        return $this;
+    }
+
+    public function getSavingsBudget(): ?SavingsBudget
+    {
+        return $this->savingsBudget;
+    }
+
+    public function setSavingsBudget(SavingsBudget $savingsBudget): static
+    {
+        if ($savingsBudget->getUser() !== $this) {
+            $savingsBudget->setUser($this);
+        }
+
+        $this->savingsBudget = $savingsBudget;
 
         return $this;
     }

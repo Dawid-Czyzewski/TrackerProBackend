@@ -42,7 +42,7 @@ class ApplicationService
         $application->setPosition($dto->position);
         $application->setPlatform($dto->platform);
         $application->setStatus(ApplicationStatus::from($dto->status));
-        if ($dto->appliedAt) {
+        if ($dto->appliedAt !== null) {
             $application->setAppliedAt($dto->appliedAt);
         }
 
